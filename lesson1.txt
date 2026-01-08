@@ -1,0 +1,11 @@
+ self.linear_relu_stack = nn.Sequential( #创建一个顺序容器nn.Sequential，赋值给self.linear_relu_stack
+
+            nn.Linear(28*28, 512), # 输入层，28*28
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 10)
+        )
+
+ 为什么要多次重复呀
+
