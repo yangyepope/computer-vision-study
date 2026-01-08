@@ -128,30 +128,30 @@ def test(dataloader, model, loss_fn):
     num_batches = len(dataloader) # 批次数
     model.eval() # 测试模式
     test_loss, correct = 0, 0
-    with torch.no_grad():
-        for X, y in dataloader:
-            X, y = X.to(device), y.to(device)
-            pred = model(X)
-            test_loss += loss_fn(pred, y).item()
-            correct += (pred.argmax(1) == y).type(torch.float).sum().item()
-    test_loss /= num_batches
-    correct /= size
+    with torch.no_grad(): #这是一个上下文管理器，用来禁止梯度计算。在测试阶段，我们不需要计算梯度，因为我们不会进行反向传播
+        for X, y in dataloader: #遍历测试数据加载器，每次获取一个批次的数据。X 是输入数据，y 是对应的标签。
+            X, y = X.to(device), y.to(device) #将输入数据和标签移动到指定的设备
+            pred = model(X) #将输入数据传入模型，得到预测值
+            test_loss += loss_fn(pred, y).item() # 计算当前批次的损失，并累加到 test_loss 变量中。注意，我们使用 .item() 来获取一个Python数字，而不是一个张量。
+            correct += (pred.argmax(1) == y).type(torch.float).sum().item() #这行代码计算当前批次中预测正确的样本数，并累加到 correct 变量中。
+    test_loss /= num_batches # 计算整个测试集上的平均损失。注意，这里假设 test_loss 是累加的损失，num_batches 是批次数
+    correct /= size # 计算整个测试集上的准确率，并打印出来。注意，这里假设 correct 是累加的预测正确的样本数，size 是测试集的大小
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
 
 epochs = 5
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    test(test_dataloader, model, loss_fn)
+    train(train_dataloader, model, loss_fn, optimizer) #训练
+    test(test_dataloader, model, loss_fn) #测试
 print("Done!")
 
 
-torch.save(model.state_dict(), "model.pth")
-print("Saved PyTorch Model State to model.pth")
+torch.save(model.state_dict(), "model.pth") # 保存模型的状态字典
+print("Saved PyTorch Model State to model.pth") # 打印保存成功
 
-model = NeuralNetwork().to(device)
-model.load_state_dict(torch.load("model.pth", weights_only=True))
+model = NeuralNetwork().to(device) # 创建模型,并分配到GPU或CPU
+model.load_state_dict(torch.load("model.pth", weights_only=True)) # 加载模型的状态字典
 
 
 classes = [
@@ -167,10 +167,20 @@ classes = [
     "Ankle boot",
 ]
 
-model.eval()
-x, y = test_data[0][0], test_data[0][1]
-with torch.no_grad():
+model.eval() #将模型设置为评估模式。这会影响某些层，比如Dropout和BatchNorm，它们在训练和评估时的行为不同
+x, y = test_data[0][0], test_data[0][1] #从测试数据中取出第一个样本。x是图像，y是标签（整数）
+with torch.no_grad(): #在这个上下文管理器内，不会计算梯度，从而节省内存和计算资源
     x = x.to(device)
-    pred = model(x)
-    predicted, actual = classes[pred[0].argmax(0)], classes[y]
+    pred = model(x) # 将输入数据传入模型，得到预测值
+
+    """
+    从预测结果中取出概率最大的类别作为预测类别，同时将真实标签y转换为类别名称
+    pred[0]：因为我们只输入了一个样本，所以pred的形状是[1, 10]（假设有10类）。pred[0]就是第一个样本的10个类别的得分。
+
+    argmax(0)：返回第0维（即10个类别得分中）最大值的索引，也就是模型认为最可能的类别编号。
+    
+    classes：是一个列表，将类别编号映射到类别名称（例如：0->'T-shirt', 1->'Trouser', ...）。
+    
+    """
+    predicted, actual = classes[pred[0].argmax(0)], classes[y] # 获取预测值和真实值对应的类别
     print(f'Predicted: "{predicted}", Actual: "{actual}"')
